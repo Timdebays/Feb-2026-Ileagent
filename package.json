@@ -1,0 +1,23 @@
+{
+  "name": "ileagent-platform",
+  "version": "1.0.0",
+  "description": "ILEAGENT - Nigeria's premier rental property marketplace",
+  "private": true,
+  "workspaces": [
+    "apps/web",
+    "apps/mobile",
+    "apps/backend"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspaces",
+    "build": "npm run build --workspaces",
+    "start": "npm run start --workspaces",
+    "test": "npm test --workspaces",
+    "lint": "npm run lint --workspaces",
+    "type-check": "npm run type-check --workspaces",
+    "format": "prettier --write \"apps/**/*.{js,jsx,ts,tsx,json,md}\""
+  },
+  "devDependencies": {
+    "prettier": "^3.0.0"
+  }
+}

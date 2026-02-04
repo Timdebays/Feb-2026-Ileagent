@@ -1,0 +1,389 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  fullName  String
+  phone     String?
+  address   String?
+  userType  UserType @default(TENANT)
+  kyc_status KYCStatus @default(NONE)
+  id_document_url String?
+  
+  // Relations
+  agent     Agent?
+  listings  Listing[]
+  payments  Payment[]
+  inquiries Inquiry[]
+  leases    Lease[]
+  paymentGroupsInitiated PaymentGroup[]
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([email])
+}
+
+model Agent {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  agencyName String
+  licenseNumber String?
+  licenseDocumentUrl String?
+  licenseVerified Boolean @default(false)
+  areasCovered String[]
+  specialties String[]
+  bio       String?
+  yearsExperience Int @default(0)
+  propertiesSold Int @default(0)
+  rating    Float @default(0)
+  ratingCount Int @default(0)
+  commissionRate Float @default(10)
+  whatsapp  String?
+  officeAddress String?
+  totalEarnings Float @default(0)
+  isActive  Boolean @default(true)
+  
+  // Relations
+  user      User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  listings  Listing[]
+  commissions Commission[]
+  leases    Lease[]
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model Listing {
+  id        String   @id @default(cuid())
+  landlordId String
+  agentId   String?
+  title     String
+  description String @db.Text
+  rentAmount Float
+  agentFeePercentage Float @default(0)
+  totalAnnualRent Float
+  currency  String @default("NGN")
+  propertyType String
+  bedrooms  Int
+  bathrooms Int
+  addressText String
+  city      String
+  state     String
+  lga       String
+  lat       Float
+  lng       Float
+  pinVerified Boolean @default(false)
+  verificationStatus VerificationStatus @default(UNVERIFIED)
+  images    String[]
+  videos    String[]
+  amenities String[]
+  landmarks Json // Array of landmark objects
+  availableFrom DateTime
+  isActive  Boolean @default(true)
+  viewsCount Int @default(0)
+  inquiriesCount Int @default(0)
+  titleDocumentUrl String?
+  landlordIdUrl String?
+  fieldVerified Boolean @default(false)
+  flagCount Int @default(0)
+  rejectionReason String?
+  
+  // Relations
+  landlord  User @relation(fields: [landlordId], references: [id], onDelete: Cascade)
+  agent     Agent? @relation(fields: [agentId], references: [id], onDelete: SetNull)
+  inquiries Inquiry[]
+  payments  Payment[]
+  leases    Lease[]
+  paymentGroups PaymentGroup[]
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([landlordId])
+  @@index([agentId])
+  @@index([state])
+  @@index([verificationStatus])
+}
+
+model Payment {
+  id        String   @id @default(cuid())
+  listingId String
+  tenantId  String
+  landlordId String
+  amount    Float
+  currency  String @default("NGN")
+  paymentType String
+  status    PaymentStatus @default(PENDING)
+  paymentGateway String
+  gatewayReference String?
+  escrowReference String?
+  payoutReference String?
+  platformFee Float
+  platformFeePercentage Float
+  landlordPayout Float
+  releaseDate DateTime?
+  receiptUrl String?
+  refundAvailable Boolean @default(false)
+  withdrawalCount Int @default(0)
+  withdrawalFee Float @default(0)
+  
+  // Relations
+  listing   Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  tenant    User @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  lease     Lease?
+  disputes  Dispute[]
+  commission Commission?
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([listingId])
+  @@index([tenantId])
+  @@index([landlordId])
+  @@index([status])
+}
+
+model Lease {
+  id        String   @id @default(cuid())
+  listingId String
+  tenantId  String
+  landlordId String
+  agentId   String?
+  paymentId String @unique
+  leasePdfUrl String
+  startDate DateTime
+  endDate   DateTime
+  rentAmount Float
+  signedByTenant Boolean @default(false)
+  signedByLandlord Boolean @default(false)
+  signedByAgent Boolean @default(false)
+  tenantSignedAt DateTime?
+  landlordSignedAt DateTime?
+  agentSignedAt DateTime?
+  status    LeaseStatus @default(DRAFT)
+  terms     Json
+  
+  // Relations
+  listing   Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  tenant    User @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  agent     Agent? @relation(fields: [agentId], references: [id], onDelete: SetNull)
+  payment   Payment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([listingId])
+  @@index([tenantId])
+  @@index([paymentId])
+}
+
+model Inquiry {
+  id        String   @id @default(cuid())
+  listingId String
+  tenantId  String
+  landlordId String
+  tenantName String
+  tenantEmail String
+  tenantPhone String
+  message   String @db.Text
+  preferredMoveDate DateTime?
+  status    InquiryStatus @default(PENDING)
+  
+  // Relations
+  listing   Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  tenant    User @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([listingId])
+  @@index([tenantId])
+  @@index([status])
+}
+
+model Commission {
+  id        String   @id @default(cuid())
+  paymentId String @unique
+  listingId String
+  agentId   String
+  landlordId String
+  tenantId  String
+  commissionAmount Float
+  commissionPercentage Float
+  baseRent  Float
+  status    CommissionStatus @default(PENDING)
+  payoutReference String?
+  paidDate  DateTime?
+  notes     String?
+  
+  // Relations
+  payment   Payment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  agent     Agent @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([paymentId])
+  @@index([agentId])
+}
+
+model Dispute {
+  id        String   @id @default(cuid())
+  paymentId String
+  listingId String
+  tenantId  String
+  landlordId String
+  raisedBy  String
+  category  String
+  description String @db.Text
+  evidenceUrls String[]
+  status    DisputeStatus @default(OPEN)
+  resolution String?
+  resolutionNotes String?
+  assignedAdmin String?
+  resolvedAt DateTime?
+  amountInDispute Float
+  refundAmount Float?
+  
+  // Relations
+  payment   Payment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([paymentId])
+  @@index([status])
+}
+
+model PaymentGroup {
+  id        String   @id @default(cuid())
+  listingId String
+  initiatorId String
+  groupName String
+  targetAmount Float
+  totalCommitted Float @default(0)
+  totalPaid Float @default(0)
+  status    GroupStatus @default(OPEN)
+  members   Json // Array of group members
+  inviteCode String @unique
+  expiresAt DateTime
+  paymentId String?
+  
+  // Relations
+  listing   Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  initiator User @relation(fields: [initiatorId], references: [id], onDelete: Cascade)
+  messages  GroupMessage[]
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([listingId])
+  @@index([initiatorId])
+  @@index([inviteCode])
+}
+
+model GroupMessage {
+  id        String   @id @default(cuid())
+  groupId   String
+  senderId  String
+  senderName String
+  message   String @db.Text
+  type      String @default("message")
+  
+  // Relations
+  group     PaymentGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([groupId])
+}
+
+enum UserType {
+  LANDLORD
+  TENANT
+  AGENT
+  ADMIN
+}
+
+enum KYCStatus {
+  NONE
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+enum VerificationStatus {
+  UNVERIFIED
+  PENDING
+  VERIFIED
+  FLAGGED
+  REJECTED
+}
+
+enum PaymentStatus {
+  PENDING
+  HELD
+  RELEASED
+  REFUNDED
+  FAILED
+  DISPUTED
+  WITHDRAWN
+}
+
+enum LeaseStatus {
+  DRAFT
+  PENDING_SIGNATURES
+  ACTIVE
+  EXPIRED
+  TERMINATED
+}
+
+enum InquiryStatus {
+  PENDING
+  CONTACTED
+  SCHEDULED_VIEWING
+  APPLICATION_SENT
+  APPROVED
+  REJECTED
+  WITHDRAWN
+}
+
+enum CommissionStatus {
+  PENDING
+  APPROVED
+  PAID
+  DISPUTED
+}
+
+enum DisputeStatus {
+  OPEN
+  UNDER_REVIEW
+  AWAITING_RESPONSE
+  RESOLVED
+  ESCALATED
+  CLOSED
+}
+
+enum GroupStatus {
+  OPEN
+  FULLY_COMMITTED
+  PARTIALLY_PAID
+  FULLY_PAID
+  COMPLETED
+  CANCELLED
+}
