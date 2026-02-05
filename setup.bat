@@ -22,7 +22,7 @@ echo.
 
 REM Install dependencies
 echo 📦 Installing dependencies...
-call npm install
+call npm install --legacy-peer-deps
 if %errorlevel% equ 0 (
     echo ✅ Dependencies installed
 ) else (

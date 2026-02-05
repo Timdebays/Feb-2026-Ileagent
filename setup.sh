@@ -18,7 +18,7 @@ echo ""
 
 # Install dependencies
 echo "📦 Installing dependencies..."
-npm install
+npm install --legacy-peer-deps
 if [ $? -eq 0 ]; then
     echo "✅ Dependencies installed"
 else
